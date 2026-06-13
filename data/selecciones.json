@@ -31,7 +31,7 @@
   { "nombre": "Paraguay", "codigoISO": "PY", "bandera": "🇵🇾", "estatus": "activa" },
   { "nombre": "Brasil", "codigoISO": "BR", "bandera": "🇧🇷", "estatus": "activa" },
   { "nombre": "Ghana", "codigoISO": "GH", "bandera": "🇬🇭", "estatus": "activa" },
-  { "nombre": "Congo", "codigoISO": "CG", "bandera": "🇨🇬", "estatus": "eliminada" },
+  { "nombre": "Congo", "codigoISO": "CG", "bandera": "🇨🇬", "estatus": "activa" },
   { "nombre": "Irán", "codigoISO": "IR", "bandera": "🇮🇷", "estatus": "activa" },
   { "nombre": "Croacia", "codigoISO": "HR", "bandera": "🇭🇷", "estatus": "activa" },
   { "nombre": "Argelia", "codigoISO": "DZ", "bandera": "🇩🇿", "estatus": "activa" },
