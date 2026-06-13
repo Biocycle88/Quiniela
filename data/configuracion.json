@@ -1,0 +1,14 @@
+{
+  "dataMode": "local",
+  "timezone": "America/Mexico_City",
+  "language": "es-MX",
+  "api": {
+    "provider": "football-data",
+    "baseUrl": "",
+    "competition": "WC",
+    "season": "2026",
+    "syncScript": "scripts/sync-football-data.mjs",
+    "usesProxy": true,
+    "notes": "No expongas API keys sensibles en frontend publico. Usa GitHub Actions con el secret FOOTBALL_DATA_TOKEN para sincronizar data/partidos.json."
+  }
+}

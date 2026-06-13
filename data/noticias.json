@@ -1,0 +1,20 @@
+[
+  {
+    "id": "news-001",
+    "titulo": "México arranca con victoria y suma para Daniel Gálvez",
+    "resumen": "La selección mexicana abrió el tablero con tres puntos y se coloca como una de las mejores selecciones asignadas del grupo.",
+    "fechaUTC": "2026-06-11T22:00:00Z",
+    "fuente": "Quiniela demo",
+    "imagen": "https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&w=900&q=80",
+    "selecciones": ["México", "Sudáfrica"]
+  },
+  {
+    "id": "news-002",
+    "titulo": "USA gana un partido apretado ante Ghana",
+    "resumen": "Daniel Márquez suma tres puntos con USA, mientras Tony queda pendiente de la reacción de Ghana en los siguientes encuentros.",
+    "fechaUTC": "2026-06-13T04:30:00Z",
+    "fuente": "Quiniela demo",
+    "imagen": "https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=900&q=80",
+    "selecciones": ["USA", "Ghana"]
+  }
+]

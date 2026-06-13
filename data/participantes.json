@@ -1,0 +1,37 @@
+[
+  {
+    "id": "daniel-galvez",
+    "nombre": "Daniel Gálvez",
+    "selecciones": ["Países Bajos", "México", "Egipto", "Turquía", "Panamá", "Senegal"]
+  },
+  {
+    "id": "gabriel",
+    "nombre": "Gabriel",
+    "selecciones": ["España", "Marruecos", "Colombia", "Japón", "Jordania", "Sudáfrica"]
+  },
+  {
+    "id": "alfredo",
+    "nombre": "Alfredo",
+    "selecciones": ["Portugal", "Noruega", "Suiza", "Austria", "Corea del Sur", "Arabia Saudita"]
+  },
+  {
+    "id": "alex",
+    "nombre": "Alex",
+    "selecciones": ["Argentina", "Uruguay", "Escocia", "Uzbekistán", "Bosnia", "Qatar"]
+  },
+  {
+    "id": "jesus",
+    "nombre": "Jesús",
+    "selecciones": ["Alemania", "Ecuador", "Curazao", "Canadá", "Cabo Verde", "Paraguay"]
+  },
+  {
+    "id": "tony",
+    "nombre": "Tony",
+    "selecciones": ["Brasil", "Ghana", "Congo", "Irán", "Croacia", "Argelia"]
+  },
+  {
+    "id": "daniel-marquez",
+    "nombre": "Daniel Márquez",
+    "selecciones": ["Inglaterra", "USA", "Nueva Zelanda", "Suecia", "Chequia", "Australia"]
+  }
+]

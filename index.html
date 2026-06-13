@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="es-MX">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Quiniela mundialista entre amigos para seguir selecciones, partidos, llaves, noticias y estadísticas."
+    />
+    <title>Quiniela Mundial 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./src/styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+    <script src="./src/app.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="hero">
+        <nav class="topbar" aria-label="Navegación principal">
+          <a class="brand" href="#tabla" aria-label="Ir a tabla general">
+            <span class="brand-mark">Q26</span>
+            <span>
+              <strong>Quiniela Mundialista</strong>
+              <small>Amigos · FIFA 2026</small>
+            </span>
+          </a>
+          <div class="nav-links" role="list">
+            <button class="nav-link active" type="button" data-view="tabla">Tabla</button>
+            <button class="nav-link" type="button" data-view="encuentros">Encuentros</button>
+            <button class="nav-link" type="button" data-view="llaves">Llaves</button>
+            <button class="nav-link" type="button" data-view="noticias">Noticias</button>
+            <button class="nav-link" type="button" data-view="reglas">Reglas</button>
+          </div>
+        </nav>
+
+        <section class="hero-content">
+          <p class="eyebrow">Modo demo/manual listo para GitHub Pages</p>
+          <h1>La quiniela vive mientras tus selecciones sigan en la pelea.</h1>
+          <p>
+            Consulta puntos, partidos, llaves, noticias automáticas y gráficos con datos editables desde archivos JSON.
+          </p>
+          <div class="hero-actions">
+            <button class="primary-action" type="button" data-view="encuentros">Ver encuentros</button>
+            <button class="secondary-action" type="button" data-view="reglas">Cómo se juega</button>
+          </div>
+        </section>
+      </header>
+
+      <main>
+        <section id="tabla" class="view-section active" data-section="tabla" aria-labelledby="tabla-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Tabla General</p>
+              <h2 id="tabla-title">Selecciones asignadas</h2>
+            </div>
+            <div class="status-pill" id="data-mode-pill">Cargando datos...</div>
+          </div>
+
+          <div class="dashboard-grid" id="dashboard"></div>
+
+          <section class="chart-grid" aria-label="Gráficos de avance">
+            <article class="chart-card">
+              <div class="card-heading">
+                <h3>Puntos por participante</h3>
+                <span>Top acumulado</span>
+              </div>
+              <canvas id="pointsChart" height="220"></canvas>
+            </article>
+            <article class="chart-card">
+              <div class="card-heading">
+                <h3>Estado de selecciones</h3>
+                <span>Activas vs eliminadas</span>
+              </div>
+              <canvas id="statusChart" height="220"></canvas>
+            </article>
+            <article class="chart-card">
+              <div class="card-heading">
+                <h3>Goles a favor</h3>
+                <span>Mejores selecciones</span>
+              </div>
+              <canvas id="goalsChart" height="220"></canvas>
+            </article>
+            <article class="chart-card">
+              <div class="card-heading">
+                <h3>Selecciones vivas</h3>
+                <span>Por participante</span>
+              </div>
+              <canvas id="aliveChart" height="220"></canvas>
+            </article>
+          </section>
+
+          <div class="table-toolbar">
+            <label>
+              Ordenar por
+              <select id="sort-table">
+                <option value="default">Orden recomendado</option>
+                <option value="seleccion">Selección</option>
+                <option value="participante">Participante</option>
+                <option value="estatus">Estatus</option>
+                <option value="puntos">Puntos</option>
+                <option value="pg">Partidos ganados</option>
+                <option value="gf">Goles a favor</option>
+                <option value="dg">Diferencia de goles</option>
+              </select>
+            </label>
+            <label class="search-field">
+              Buscar selección o dueño
+              <input id="table-search" type="search" placeholder="Ej. México, Tony, Brasil..." />
+            </label>
+          </div>
+
+          <div class="table-wrap" role="region" aria-label="Tabla general" tabindex="0">
+            <table>
+              <thead>
+                <tr>
+                  <th>Bandera</th>
+                  <th>Selección</th>
+                  <th>Dueño</th>
+                  <th>Estatus</th>
+                  <th>Pts</th>
+                  <th>PJ</th>
+                  <th>PG</th>
+                  <th>PE</th>
+                  <th>PP</th>
+                  <th>GF</th>
+                  <th>GC</th>
+                  <th>DG</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="encuentros" class="view-section" data-section="encuentros" aria-labelledby="encuentros-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Encuentros</p>
+              <h2 id="encuentros-title">Calendario y resultados</h2>
+            </div>
+            <button class="secondary-action compact" type="button" id="clear-filters">Limpiar filtros</button>
+          </div>
+
+          <div class="filters-panel">
+            <label>
+              Búsqueda rápida
+              <input id="match-search" type="search" placeholder="Equipo, ciudad, fase, participante..." />
+            </label>
+            <label>
+              Selección
+              <select id="filter-team">
+                <option value="">Todas</option>
+              </select>
+            </label>
+            <label>
+              Participante
+              <select id="filter-owner">
+                <option value="">Todos</option>
+              </select>
+            </label>
+            <label>
+              Fecha
+              <input id="filter-date" type="date" />
+            </label>
+            <label>
+              Estatus selección
+              <select id="filter-status">
+                <option value="">Todos</option>
+                <option value="activa">Activa</option>
+                <option value="eliminada">Eliminada</option>
+                <option value="campeona">Campeona</option>
+              </select>
+            </label>
+            <label>
+              Partido
+              <select id="filter-played">
+                <option value="">Todos</option>
+                <option value="jugado">Jugado</option>
+                <option value="pendiente">Pendiente</option>
+              </select>
+            </label>
+            <label>
+              Fase
+              <select id="filter-phase">
+                <option value="">Todas</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="matches-list" id="matches-list"></div>
+        </section>
+
+        <section id="llaves" class="view-section" data-section="llaves" aria-labelledby="llaves-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Eliminación directa</p>
+              <h2 id="llaves-title">Llaves del torneo</h2>
+            </div>
+          </div>
+          <div class="bracket-wrap" id="bracket"></div>
+        </section>
+
+        <section id="noticias" class="view-section" data-section="noticias" aria-labelledby="noticias-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Noticias</p>
+              <h2 id="noticias-title">Lo más importante de la quiniela</h2>
+            </div>
+          </div>
+          <div class="news-grid" id="news-grid"></div>
+        </section>
+
+        <section id="reglas" class="view-section" data-section="reglas" aria-labelledby="reglas-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Reglas</p>
+              <h2 id="reglas-title">Cómo gana alguien</h2>
+            </div>
+          </div>
+          <div class="rules-grid">
+            <article>
+              <h3>Puntuación</h3>
+              <p>Victoria: 3 puntos. Empate: 1 punto. Derrota: 0 puntos.</p>
+            </article>
+            <article>
+              <h3>Ganador final</h3>
+              <p>Gana la persona que tenga asignada a la selección campeona del Mundial FIFA 2026.</p>
+            </article>
+            <article>
+              <h3>Estatus</h3>
+              <p>Las selecciones eliminadas se marcan con 💀 y la campeona con 🏆.</p>
+            </article>
+            <article>
+              <h3>Modo manual</h3>
+              <p>Edita los JSON en la carpeta <strong>data</strong> para actualizar resultados, estatus y noticias.</p>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
