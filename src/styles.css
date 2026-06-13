@@ -290,8 +290,62 @@ main {
 }
 
 .chart-card {
-  min-height: 290px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 250, 255, 0.96)),
+    var(--surface);
+  min-height: 310px;
   padding: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.chart-card::before {
+  background: linear-gradient(135deg, rgba(13, 95, 255, 0.12), rgba(0, 168, 120, 0.08));
+  border-radius: 999px;
+  content: "";
+  height: 140px;
+  position: absolute;
+  right: -70px;
+  top: -80px;
+  width: 180px;
+}
+
+.chart-card .card-heading,
+.chart-card canvas {
+  position: relative;
+  z-index: 1;
+}
+
+.chart-card canvas {
+  cursor: pointer;
+  min-height: 220px;
+}
+
+.chart-filter-bar {
+  align-items: center;
+  background: #eaf2ff;
+  border: 1px solid rgba(13, 95, 255, 0.18);
+  border-radius: var(--radius);
+  color: var(--brand-strong);
+  display: flex;
+  font-weight: 800;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+}
+
+.chart-filter-bar[hidden] {
+  display: none;
+}
+
+.chart-filter-bar button {
+  background: #fff;
+  border: 1px solid rgba(13, 95, 255, 0.2);
+  border-radius: 999px;
+  color: var(--brand-strong);
+  font-weight: 800;
+  padding: 8px 11px;
 }
 
 .card-heading {
@@ -328,6 +382,14 @@ main {
 .table-toolbar {
   align-items: end;
   grid-template-columns: 220px minmax(220px, 1fr);
+}
+
+.table-toolbar.single {
+  grid-template-columns: 1fr;
+}
+
+.scorers-table {
+  min-width: 860px;
 }
 
 .filters-panel {
@@ -447,7 +509,7 @@ tbody tr:hover {
 .match-card {
   display: grid;
   gap: 12px;
-  grid-template-columns: minmax(150px, 0.7fr) minmax(260px, 1.5fr) minmax(160px, 0.8fr);
+  grid-template-columns: minmax(150px, 0.7fr) minmax(260px, 1.7fr);
   padding: 16px;
 }
 
@@ -505,12 +567,6 @@ tbody tr:hover {
   min-width: 72px;
   padding: 10px 12px;
   text-align: center;
-}
-
-.venue {
-  color: var(--muted);
-  font-size: 0.84rem;
-  line-height: 1.55;
 }
 
 .empty-state {
@@ -612,6 +668,11 @@ tbody tr:hover {
   color: var(--muted);
   line-height: 1.55;
   margin: 0 0 12px;
+}
+
+.news-content {
+  color: #3c4659;
+  font-size: 0.88rem;
 }
 
 .news-meta,

@@ -54,7 +54,8 @@ const FOOTBALL_DATA_TEAM_NAMES = {
   Argentina: "Argentina",
   Australia: "Australia",
   Austria: "Austria",
-  "Bosnia and Herzegovina": "Bosnia",
+  Bosnia: "Bosnia-Herzegovina",
+  "Bosnia and Herzegovina": "Bosnia-Herzegovina",
   Brazil: "Brasil",
   Canada: "Canadá",
   "Cape Verde": "Cabo Verde",
@@ -125,7 +126,7 @@ const FALLBACK_DATA = {
     {
       id: "alex",
       nombre: "Alex",
-      selecciones: ["Argentina", "Uruguay", "Escocia", "Uzbekistán", "Bosnia", "Qatar"]
+      selecciones: ["Argentina", "Uruguay", "Escocia", "Uzbekistán", "Bosnia-Herzegovina", "Qatar"]
     },
     {
       id: "jesus",
@@ -149,7 +150,7 @@ const FALLBACK_DATA = {
     ["Colombia", "🇨🇴"], ["Japón", "🇯🇵"], ["Jordania", "🇯🇴"], ["Sudáfrica", "🇿🇦"],
     ["Portugal", "🇵🇹"], ["Noruega", "🇳🇴"], ["Suiza", "🇨🇭"], ["Austria", "🇦🇹"],
     ["Corea del Sur", "🇰🇷"], ["Arabia Saudita", "🇸🇦"], ["Argentina", "🇦🇷"], ["Uruguay", "🇺🇾"],
-    ["Escocia", "🏴"], ["Uzbekistán", "🇺🇿"], ["Bosnia", "🇧🇦"], ["Qatar", "🇶🇦"],
+    ["Escocia", "🏴"], ["Uzbekistán", "🇺🇿"], ["Bosnia-Herzegovina", "🇧🇦"], ["Qatar", "🇶🇦"],
     ["Alemania", "🇩🇪"], ["Ecuador", "🇪🇨"], ["Curazao", "🇨🇼"], ["Canadá", "🇨🇦"],
     ["Cabo Verde", "🇨🇻"], ["Paraguay", "🇵🇾"], ["Brasil", "🇧🇷"], ["Ghana", "🇬🇭"],
     ["Congo", "🇨🇬"], ["Irán", "🇮🇷"], ["Croacia", "🇭🇷"], ["Argelia", "🇩🇿"],
@@ -266,6 +267,8 @@ const state = {
   tabla: [],
   sortBy: "default",
   tableSearch: "",
+  scorerSearch: "",
+  chartFilter: null,
   filters: {
     search: "",
     team: "",
@@ -368,12 +371,30 @@ function normalizarPartidoFootballData(match) {
     estatus: FOOTBALL_DATA_STATUS_LABELS[match.status] || "pendiente",
     estadio: match.venue || "",
     ciudad: "",
-    pais: ""
+    pais: "",
+    goleadores: normalizarGoleadoresFootballData(match.goals)
   };
 }
 
 function normalizarNombreFootballData(name) {
   return FOOTBALL_DATA_TEAM_NAMES[name] || name || "Por definirse";
+}
+
+function normalizarGoleadoresFootballData(goals) {
+  if (!Array.isArray(goals)) return [];
+  return goals
+    .map((goal) => {
+      const jugador = goal.scorer?.name || goal.player?.name || goal.player || goal.scorer || "";
+      const seleccion = normalizarNombreFootballData(goal.team?.name || goal.team || goal.side || "");
+      if (!jugador || !seleccion) return null;
+      return {
+        jugador,
+        seleccion,
+        minuto: Number.isFinite(goal.minute) ? goal.minute : null,
+        tipo: goal.type === "PENALTY" || goal.penalty ? "penal" : goal.type === "OWN_GOAL" ? "autogol" : "regular"
+      };
+    })
+    .filter(Boolean);
 }
 
 function normalizarPartidoApiFootball(item) {
@@ -409,6 +430,11 @@ function bindEvents() {
     renderTabla();
   });
 
+  byId("scorer-search").addEventListener("input", (event) => {
+    state.scorerSearch = event.target.value.trim().toLowerCase();
+    renderGoleo();
+  });
+
   const filterMap = {
     "match-search": "search",
     "filter-team": "team",
@@ -435,6 +461,13 @@ function bindEvents() {
     });
     renderEncuentros();
   });
+
+  byId("clear-chart-filter").addEventListener("click", () => {
+    state.chartFilter = null;
+    renderChartFilter();
+    renderTabla();
+    renderEncuentros();
+  });
 }
 
 function setView(view) {
@@ -452,7 +485,9 @@ function renderAll() {
   byId("data-mode-pill").textContent = `${mode} · ${state.partidos.length} partidos cargados`;
   renderDashboard();
   renderCharts();
+  renderChartFilter();
   renderTabla();
+  renderGoleo();
   renderEncuentros();
   renderLlaves();
   renderNoticias();
@@ -494,8 +529,33 @@ function renderDashboard() {
     .join("");
 }
 
+function renderChartFilter() {
+  const bar = byId("chart-filter-bar");
+  const label = byId("chart-filter-label");
+  if (!state.chartFilter) {
+    bar.hidden = true;
+    label.textContent = "";
+    return;
+  }
+
+  bar.hidden = false;
+  label.textContent = `Filtro por grafico: ${state.chartFilter.label}`;
+}
+
+function applyChartFilter(filter) {
+  const sameFilter =
+    state.chartFilter &&
+    state.chartFilter.type === filter.type &&
+    state.chartFilter.value === filter.value;
+  state.chartFilter = sameFilter ? null : filter;
+  renderChartFilter();
+  renderTabla();
+  renderEncuentros();
+}
+
 function renderTabla() {
   const sorted = ordenarTablaGeneral(state.sortBy).filter((row) => {
+    if (!matchesChartFilter(row)) return false;
     if (!state.tableSearch) return true;
     return `${row.seleccion} ${row.participante} ${row.estatus}`.toLowerCase().includes(state.tableSearch);
   });
@@ -522,8 +582,44 @@ function renderTabla() {
     .join("");
 }
 
+function renderGoleo() {
+  const scorers = calcularTablaGoleoJugadores(state.partidos).filter((row) => {
+    if (!state.scorerSearch) return true;
+    return `${row.jugador} ${row.seleccion} ${row.participante}`.toLowerCase().includes(state.scorerSearch);
+  });
+
+  const body = byId("goleo-body");
+  if (!scorers.length) {
+    body.innerHTML = `
+      <tr>
+        <td colspan="8">
+          <div class="empty-state">Aun no hay goleadores registrados. Se llenara cuando los partidos tengan datos de anotadores.</div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  body.innerHTML = scorers
+    .map(
+      (row, index) => `
+        <tr>
+          <td><strong>${index + 1}</strong></td>
+          <td><strong>${escapeHtml(row.jugador)}</strong></td>
+          <td><span class="team-cell"><span class="flag">${escapeHtml(row.bandera)}</span>${escapeHtml(row.seleccion)}</span></td>
+          <td>${escapeHtml(row.participante)}</td>
+          <td><strong>${row.goles}</strong></td>
+          <td>${row.penales}</td>
+          <td>${row.partidos}</td>
+          <td>${escapeHtml(row.ultimoGol)}</td>
+        </tr>
+      `
+    )
+    .join("");
+}
+
 function renderEncuentros() {
-  const matches = filtrarEncuentros(state.filters);
+  const matches = filtrarEncuentros(state.filters).filter(matchesMatchChartFilter);
   const container = byId("matches-list");
 
   if (!matches.length) {
@@ -553,10 +649,6 @@ function renderMatchCard(match) {
         ${renderTeamSide(local, resultLocal, false)}
         <div class="score">${escapeHtml(score)}</div>
         ${renderTeamSide(visitante, resultVisitante, true)}
-      </div>
-      <div class="venue">
-        <strong>Sede</strong><br />
-        ${escapeHtml([match.estadio, match.ciudad, match.pais].filter(Boolean).join(" · ") || "Por definirse")}
       </div>
     </article>
   `;
@@ -637,6 +729,7 @@ function renderNoticias() {
   byId("news-grid").innerHTML = noticias
     .map((item) => {
       const participantes = getParticipantesAfectados(item.selecciones || []);
+      const contenido = item.contenido || construirContenidoNoticia(item);
       return `
         <article class="news-card">
           <img src="${escapeAttribute(item.imagen || DEFAULT_NEWS_IMAGE)}" alt="" loading="lazy" />
@@ -647,6 +740,7 @@ function renderNoticias() {
             </div>
             <h3>${escapeHtml(item.titulo)}</h3>
             <p>${escapeHtml(item.resumen)}</p>
+            <p class="news-content">${escapeHtml(contenido)}</p>
             <div class="tags">
               ${(item.selecciones || []).map((team) => `<span class="tag">${escapeHtml(team)}</span>`).join("")}
               ${participantes.map((name) => `<span class="tag">${escapeHtml(name)}</span>`).join("")}
@@ -656,6 +750,13 @@ function renderNoticias() {
       `;
     })
     .join("");
+}
+
+function construirContenidoNoticia(item) {
+  const equipos = (item.selecciones || []).join(" y ") || "las selecciones involucradas";
+  const participantes = getParticipantesAfectados(item.selecciones || []);
+  const afectados = participantes.length ? ` Participantes afectados: ${participantes.join(", ")}.` : "";
+  return `Esta noticia se genera con los datos disponibles de la quiniela para dar contexto sobre ${equipos}.${afectados} Revisa la tabla general y los encuentros para ver como cambia el ranking.`;
 }
 
 function renderCharts() {
@@ -677,21 +778,47 @@ function renderCharts() {
     type: "bar",
     data: {
       labels: ranking.map((row) => row.nombre),
-      datasets: [{ label: "Puntos", data: ranking.map((row) => row.puntos), backgroundColor: "#0d5fff" }]
+      datasets: [
+        {
+          label: "Puntos",
+          data: ranking.map((row) => row.puntos),
+          backgroundColor: chartGradient("pointsChart", "#0d5fff", "#00a878"),
+          borderRadius: 12,
+          borderSkipped: false,
+          hoverBackgroundColor: "#073fba"
+        }
+      ]
     },
-    options: barOptions()
+    options: barOptions((index) => {
+      const item = ranking[index];
+      if (item) applyChartFilter({ type: "participante", value: item.nombre, label: `participante ${item.nombre}` });
+    })
   });
 
   makeChart("statusChart", {
     type: "doughnut",
     data: {
       labels: ["Activas", "Eliminadas"],
-      datasets: [{ data: [activeCount, eliminatedCount], backgroundColor: ["#00a878", "#d94848"] }]
+      datasets: [
+        {
+          data: [activeCount, eliminatedCount],
+          backgroundColor: ["#00a878", "#d94848"],
+          borderColor: "#ffffff",
+          borderWidth: 5,
+          hoverOffset: 12,
+          spacing: 4
+        }
+      ]
     },
     options: {
       responsive: true,
-      plugins: { legend: { position: "bottom" } },
-      cutout: "62%"
+      plugins: modernPlugins(true),
+      cutout: "62%",
+      onClick: (event, elements) => {
+        const index = elements[0]?.index;
+        if (index === 0) applyChartFilter({ type: "estatus", value: "vivas", label: "selecciones activas" });
+        if (index === 1) applyChartFilter({ type: "estatus", value: "eliminada", label: "selecciones eliminadas" });
+      }
     }
   });
 
@@ -699,18 +826,42 @@ function renderCharts() {
     type: "bar",
     data: {
       labels: topGoals.map((row) => row.seleccion),
-      datasets: [{ label: "GF", data: topGoals.map((row) => row.gf), backgroundColor: "#f59e0b" }]
+      datasets: [
+        {
+          label: "GF",
+          data: topGoals.map((row) => row.gf),
+          backgroundColor: chartGradient("goalsChart", "#f59e0b", "#ef4444"),
+          borderRadius: 12,
+          borderSkipped: false,
+          hoverBackgroundColor: "#c2410c"
+        }
+      ]
     },
-    options: barOptions()
+    options: barOptions((index) => {
+      const item = topGoals[index];
+      if (item) applyChartFilter({ type: "seleccion", value: item.seleccion, label: `seleccion ${item.seleccion}` });
+    })
   });
 
   makeChart("aliveChart", {
     type: "bar",
     data: {
       labels: ranking.map((row) => row.nombre),
-      datasets: [{ label: "Vivas", data: ranking.map((row) => row.vivas), backgroundColor: "#00a878" }]
+      datasets: [
+        {
+          label: "Vivas",
+          data: ranking.map((row) => row.vivas),
+          backgroundColor: chartGradient("aliveChart", "#00a878", "#22c55e"),
+          borderRadius: 12,
+          borderSkipped: false,
+          hoverBackgroundColor: "#08775a"
+        }
+      ]
     },
-    options: barOptions()
+    options: barOptions((index) => {
+      const item = ranking[index];
+      if (item) applyChartFilter({ type: "participante", value: item.nombre, label: `participante ${item.nombre}` });
+    })
   });
 }
 
@@ -719,13 +870,70 @@ function makeChart(id, config) {
   state.charts[id] = new Chart(byId(id), config);
 }
 
-function barOptions() {
+function chartGradient(id, start, end) {
+  const canvas = byId(id);
+  const ctx = canvas.getContext("2d");
+  const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height || 220);
+  gradient.addColorStop(0, start);
+  gradient.addColorStop(1, end);
+  return gradient;
+}
+
+function modernPlugins(showLegend = false) {
+  return {
+    legend: {
+      display: showLegend,
+      position: "bottom",
+      labels: {
+        boxWidth: 10,
+        boxHeight: 10,
+        usePointStyle: true,
+        color: "#3c4659",
+        font: { family: "Montserrat", weight: "700" }
+      }
+    },
+    tooltip: {
+      backgroundColor: "#172033",
+      borderColor: "rgba(255,255,255,0.12)",
+      borderWidth: 1,
+      cornerRadius: 8,
+      displayColors: false,
+      padding: 12,
+      titleFont: { family: "Montserrat", weight: "800" },
+      bodyFont: { family: "Montserrat", weight: "600" }
+    }
+  };
+}
+
+function barOptions(onBarClick) {
   return {
     responsive: true,
-    plugins: { legend: { display: false } },
+    maintainAspectRatio: false,
+    plugins: modernPlugins(false),
+    onClick: (event, elements) => {
+      const index = elements[0]?.index;
+      if (index !== undefined && onBarClick) onBarClick(index);
+    },
     scales: {
-      x: { ticks: { maxRotation: 45, minRotation: 0 } },
-      y: { beginAtZero: true, ticks: { precision: 0 } }
+      x: {
+        grid: { display: false },
+        ticks: {
+          color: "#68738a",
+          font: { family: "Montserrat", weight: "700" },
+          maxRotation: 45,
+          minRotation: 0
+        }
+      },
+      y: {
+        beginAtZero: true,
+        border: { display: false },
+        grid: { color: "rgba(104, 115, 138, 0.14)" },
+        ticks: {
+          color: "#68738a",
+          font: { family: "Montserrat", weight: "700" },
+          precision: 0
+        }
+      }
     }
   };
 }
@@ -833,11 +1041,41 @@ function filtrarEncuentros(filtros) {
       (filtros.played === "jugado" && isPlayed(match)) ||
       (filtros.played === "pendiente" && !isPlayed(match));
     const hayFase = !filtros.phase || match.fase === filtros.phase;
-    const text = `${match.local} ${match.visitante} ${match.fase} ${match.grupo} ${match.estadio} ${match.ciudad} ${local.participante} ${visitante.participante}`.toLowerCase();
+    const text = `${match.local} ${match.visitante} ${match.fase} ${match.grupo} ${local.participante} ${visitante.participante}`.toLowerCase();
     const hayTexto = !filtros.search || text.includes(filtros.search.toLowerCase());
 
     return hayEquipo && hayOwner && hayFecha && hayEstatus && hayJugado && hayFase && hayTexto;
   });
+}
+
+function matchesChartFilter(row) {
+  if (!state.chartFilter) return true;
+  if (state.chartFilter.type === "participante") return row.participante === state.chartFilter.value;
+  if (state.chartFilter.type === "seleccion") return row.seleccion === state.chartFilter.value;
+  if (state.chartFilter.type === "estatus") {
+    if (state.chartFilter.value === "vivas") return row.estatus === "activa" || row.estatus === "campeona";
+    return row.estatus === state.chartFilter.value;
+  }
+  return true;
+}
+
+function matchesMatchChartFilter(match) {
+  if (!state.chartFilter) return true;
+  const local = getTeamContext(match.local);
+  const visitante = getTeamContext(match.visitante);
+  if (state.chartFilter.type === "participante") {
+    return local.participante === state.chartFilter.value || visitante.participante === state.chartFilter.value;
+  }
+  if (state.chartFilter.type === "seleccion") {
+    return match.local === state.chartFilter.value || match.visitante === state.chartFilter.value;
+  }
+  if (state.chartFilter.type === "estatus") {
+    if (state.chartFilter.value === "vivas") {
+      return [local.estatus, visitante.estatus].some((status) => status === "activa" || status === "campeona");
+    }
+    return local.estatus === state.chartFilter.value || visitante.estatus === state.chartFilter.value;
+  }
+  return true;
 }
 
 function convertirHoraACDMX(fechaUTC) {
@@ -854,15 +1092,19 @@ function convertirHoraACDMX(fechaUTC) {
 function detectarSeleccionEliminada(seleccion, partidos, standings) {
   const info = getSeleccionInfo(seleccion);
   if (standings?.[seleccion]?.estatus) return standings[seleccion].estatus;
-  if (info.estatus === "campeona") return "campeona";
-  if (info.estatus === "eliminada") return "eliminada";
 
+  const wonFinal = partidos.some((match) => match.fase === "Final" && isPlayed(match) && getWinner(match) === seleccion);
   const lostKnockout = partidos.some((match) => {
     if (!isKnockout(match.fase) || !isPlayed(match)) return false;
     return getLoser(match) === seleccion;
   });
 
-  return lostKnockout ? "eliminada" : "activa";
+  if (wonFinal) return "campeona";
+  if (lostKnockout) return "eliminada";
+  if (info.estatus === "campeona") return "campeona";
+  if (info.estatus === "eliminada") return "eliminada";
+
+  return "activa";
 }
 
 function generarNoticiasAutomaticas(partidos, participantes) {
@@ -881,6 +1123,7 @@ function generarNoticiasAutomaticas(partidos, participantes) {
           id: `auto-${match.id}-winner`,
           titulo: `${winner} suma 3 puntos tras vencer a ${loser}`,
           resumen: `${owner} recibe buenas noticias en la quiniela. El marcador terminó ${match.golesLocal}-${match.golesVisitante}.`,
+          contenido: `El resultado mejora el puntaje de ${winner}, aumenta sus partidos ganados y puede mover a ${owner} en el ranking de participantes. ${loser} conserva su lugar en la tabla si sigue con posibilidades, pero carga con una derrota que afecta su diferencia de goles.`,
           fechaUTC: match.fechaUTC,
           fuente: "Generada por la quiniela",
           imagen: DEFAULT_NEWS_IMAGE,
@@ -891,6 +1134,7 @@ function generarNoticiasAutomaticas(partidos, participantes) {
           id: `auto-${match.id}-draw`,
           titulo: `${match.local} y ${match.visitante} reparten puntos`,
           resumen: `El empate suma una unidad para cada selección asignada o deja el resultado registrado si no tienen dueño.`,
+          contenido: `La igualdad mantiene abiertas las posibilidades de ambas selecciones y reparte puntos entre sus participantes. En la tabla general, el impacto principal se nota en partidos jugados, empates, goles a favor, goles en contra y diferencia de goles.`,
           fechaUTC: match.fechaUTC,
           fuente: "Generada por la quiniela",
           imagen: DEFAULT_NEWS_IMAGE,
@@ -904,6 +1148,7 @@ function generarNoticiasAutomaticas(partidos, participantes) {
           id: `auto-${match.id}-eliminated`,
           titulo: `${loser} queda eliminado ${owner !== "Sin dueño" ? `y afecta a ${owner}` : ""}`,
           resumen: `La derrota en ${match.fase} marca a ${loser} con 💀 en la quiniela.`,
+          contenido: `Al tratarse de una fase de eliminación directa, ${loser} pierde sus posibilidades de campeonato y deja de contar como selección viva. Si ${owner} tenía pocas selecciones activas, este resultado puede cambiar de forma importante su panorama en la quiniela.`,
           fechaUTC: match.fechaUTC,
           fuente: "Generada por la quiniela",
           imagen: DEFAULT_NEWS_IMAGE,
@@ -920,6 +1165,7 @@ function generarNoticiasAutomaticas(partidos, participantes) {
         id: `auto-${match.id}-next`,
         titulo: `${match.local} jugará contra ${match.visitante}`,
         resumen: `Próximo partido de ${match.fase}. Revisa qué participantes tienen selecciones involucradas.`,
+        contenido: `Este encuentro puede mover puntos, goles y posiciones en cuanto se capture el marcador final o llegue la actualización desde football-data.org. Las selecciones involucradas aparecen con su dueño actual para que sea fácil ver a quién le conviene cada resultado.`,
         fechaUTC: match.fechaUTC,
         fuente: "Calendario de la quiniela",
         imagen: DEFAULT_NEWS_IMAGE,
@@ -946,6 +1192,52 @@ function calcularRankingParticipantes() {
     .sort((a, b) => b.vivas - a.vivas || b.puntos - a.puntos || b.dg - a.dg || b.gf - a.gf);
 }
 
+function calcularTablaGoleoJugadores(partidos) {
+  const scorers = new Map();
+
+  partidos.forEach((match) => {
+    (match.goleadores || []).forEach((goal) => {
+      if (!goal.jugador || !goal.seleccion || goal.tipo === "autogol") return;
+      const key = `${goal.jugador}__${goal.seleccion}`;
+      const current = scorers.get(key) || {
+        jugador: goal.jugador,
+        seleccion: goal.seleccion,
+        participante: obtenerParticipantePorSeleccion(goal.seleccion)?.nombre || "Sin dueño",
+        bandera: getSeleccionInfo(goal.seleccion).bandera,
+        goles: 0,
+        penales: 0,
+        partidosSet: new Set(),
+        ultimoGolUTC: match.fechaUTC,
+        ultimoGol: convertirHoraACDMX(match.fechaUTC)
+      };
+
+      current.goles += 1;
+      if (goal.tipo === "penal") current.penales += 1;
+      current.partidosSet.add(match.id);
+
+      if (new Date(match.fechaUTC) >= new Date(current.ultimoGolUTC)) {
+        current.ultimoGolUTC = match.fechaUTC;
+        current.ultimoGol = convertirHoraACDMX(match.fechaUTC);
+      }
+
+      scorers.set(key, current);
+    });
+  });
+
+  return [...scorers.values()]
+    .map((row) => ({
+      ...row,
+      partidos: row.partidosSet.size
+    }))
+    .sort(
+      (a, b) =>
+        b.goles - a.goles ||
+        b.penales - a.penales ||
+        new Date(b.ultimoGolUTC) - new Date(a.ultimoGolUTC) ||
+        a.jugador.localeCompare(b.jugador, "es-MX")
+    );
+}
+
 function defaultTableSort(a, b) {
   return (
     STATUS_ORDER[a.estatus] - STATUS_ORDER[b.estatus] ||
@@ -957,12 +1249,27 @@ function defaultTableSort(a, b) {
 }
 
 function getSeleccionInfo(nombre) {
-  return state.selecciones.find((seleccion) => seleccion.nombre === nombre) || {
+  const info = state.selecciones.find((seleccion) => seleccion.nombre === nombre);
+  if (info) {
+    return {
+      ...info,
+      bandera: info.bandera || flagEmojiFromCode(info.codigoISO)
+    };
+  }
+
+  return {
     nombre,
     codigoISO: "",
     bandera: isPlaceholderTeam(nombre) ? "▫️" : "🏳️",
     estatus: "activa"
   };
+}
+
+function flagEmojiFromCode(code) {
+  if (code === "GB-ENG") return "\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}";
+  if (code === "GB-SCT") return "\u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}";
+  if (!/^[A-Z]{2}$/.test(code || "")) return "🏳️";
+  return [...code].map((letter) => String.fromCodePoint(127397 + letter.charCodeAt(0))).join("");
 }
 
 function getTeamContext(nombre) {
@@ -1088,5 +1395,6 @@ Object.assign(window, {
   convertirHoraACDMX,
   detectarSeleccionEliminada,
   generarNoticiasAutomaticas,
-  calcularRankingParticipantes
+  calcularRankingParticipantes,
+  calcularTablaGoleoJugadores
 });

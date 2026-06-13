@@ -32,6 +32,7 @@
           <div class="nav-links" role="list">
             <button class="nav-link active" type="button" data-view="tabla">Tabla</button>
             <button class="nav-link" type="button" data-view="encuentros">Encuentros</button>
+            <button class="nav-link" type="button" data-view="goleo">Goleo</button>
             <button class="nav-link" type="button" data-view="llaves">Llaves</button>
             <button class="nav-link" type="button" data-view="noticias">Noticias</button>
             <button class="nav-link" type="button" data-view="reglas">Reglas</button>
@@ -94,6 +95,11 @@
             </article>
           </section>
 
+          <div class="chart-filter-bar" id="chart-filter-bar" hidden>
+            <span id="chart-filter-label"></span>
+            <button type="button" id="clear-chart-filter">Quitar filtro</button>
+          </div>
+
           <div class="table-toolbar">
             <label>
               Ordenar por
@@ -137,6 +143,40 @@
           </div>
         </section>
 
+        <section id="goleo" class="view-section" data-section="goleo" aria-labelledby="goleo-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Goleo Individual</p>
+              <h2 id="goleo-title">Tabla de goleo por jugador</h2>
+            </div>
+          </div>
+
+          <div class="table-toolbar single">
+            <label class="search-field">
+              Buscar jugador, selección o dueño
+              <input id="scorer-search" type="search" placeholder="Ej. Pulisic, México, Tony..." />
+            </label>
+          </div>
+
+          <div class="table-wrap" role="region" aria-label="Tabla de goleo" tabindex="0">
+            <table class="scorers-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Jugador</th>
+                  <th>Selección</th>
+                  <th>Dueño</th>
+                  <th>Goles</th>
+                  <th>Penales</th>
+                  <th>Partidos anotando</th>
+                  <th>Último gol</th>
+                </tr>
+              </thead>
+              <tbody id="goleo-body"></tbody>
+            </table>
+          </div>
+        </section>
+
         <section id="encuentros" class="view-section" data-section="encuentros" aria-labelledby="encuentros-title">
           <div class="section-heading">
             <div>
@@ -149,7 +189,7 @@
           <div class="filters-panel">
             <label>
               Búsqueda rápida
-              <input id="match-search" type="search" placeholder="Equipo, ciudad, fase, participante..." />
+              <input id="match-search" type="search" placeholder="Equipo, fase, participante..." />
             </label>
             <label>
               Selección

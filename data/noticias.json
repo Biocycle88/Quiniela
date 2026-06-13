@@ -1,8 +1,9 @@
 [
   {
     "id": "news-001",
-    "titulo": "México arranca con victoria y suma para Daniel Gálvez",
-    "resumen": "La selección mexicana abrió el tablero con tres puntos y se coloca como una de las mejores selecciones asignadas del grupo.",
+    "titulo": "Mexico arranca con victoria y mueve la quiniela",
+    "resumen": "La seleccion mexicana sumo tres puntos en el partido inaugural demo y le dio a Daniel Galvez una ventaja temprana en la tabla.",
+    "contenido": "El triunfo de Mexico cambia de inmediato el tablero de la quiniela: suma puntos, mejora su diferencia de goles y mantiene viva una de las selecciones fuertes de Daniel Galvez. Sudafrica, asignada a Gabriel, no queda fuera de competencia, pero empieza con presion para recuperar terreno en sus siguientes partidos.",
     "fechaUTC": "2026-06-11T22:00:00Z",
     "fuente": "Quiniela demo",
     "imagen": "https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&w=900&q=80",
@@ -11,10 +12,21 @@
   {
     "id": "news-002",
     "titulo": "USA gana un partido apretado ante Ghana",
-    "resumen": "Daniel Márquez suma tres puntos con USA, mientras Tony queda pendiente de la reacción de Ghana en los siguientes encuentros.",
+    "resumen": "USA supero a Ghana en un encuentro de ida y vuelta, sumando puntos importantes para Daniel Marquez.",
+    "contenido": "El marcador deja a USA con una victoria valiosa y tres puntos que empujan a Daniel Marquez en el ranking de participantes. Para Tony, Ghana todavia conserva margen de reaccion, aunque el resultado obliga a mirar de cerca los proximos cruces y la diferencia de goles.",
     "fechaUTC": "2026-06-13T04:30:00Z",
     "fuente": "Quiniela demo",
     "imagen": "https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=900&q=80",
     "selecciones": ["USA", "Ghana"]
+  },
+  {
+    "id": "news-003",
+    "titulo": "Canada y Japon reparten puntos",
+    "resumen": "El empate mantiene activas a dos selecciones asignadas y deja todo abierto en el grupo demo.",
+    "contenido": "Canada, de Jesus, y Japon, de Gabriel, sumaron un punto cada una. Aunque ningun participante se despega con este resultado, ambos equipos conservan opciones y pueden volverse clave si avanzan a eliminacion directa.",
+    "fechaUTC": "2026-06-12T23:45:00Z",
+    "fuente": "Quiniela demo",
+    "imagen": "https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=900&q=80",
+    "selecciones": ["Canadá", "Japón"]
   }
 ]

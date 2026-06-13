@@ -66,11 +66,25 @@ Para un partido jugado:
 {
   "golesLocal": 2,
   "golesVisitante": 1,
-  "estatus": "finalizado"
+  "estatus": "finalizado",
+  "goleadores": [
+    {
+      "jugador": "Christian Pulisic",
+      "seleccion": "USA",
+      "minuto": 12,
+      "tipo": "regular"
+    }
+  ]
 }
 ```
 
 La tabla calcula automáticamente puntos, ganados, empatados, perdidos, goles a favor, goles en contra y diferencia de goles.
+
+La tabla de goleo por jugador se alimenta del arreglo opcional `goleadores`. Valores recomendados para `tipo`:
+
+- `regular`
+- `penal`
+- `autogol`
 
 ## Estatus de selecciones
 
@@ -92,6 +106,13 @@ Valores válidos:
 - `campeona`
 
 La app también marca como eliminada a una selección que pierde un partido de eliminación directa registrado como finalizado.
+
+Cuando se ejecuta `npm run sync:football-data` o el workflow de GitHub Actions, el script también intenta actualizar `data/selecciones.json` con estatus derivados de los datos reales:
+
+- Final ganada: `campeona`.
+- Derrota en eliminación directa: `eliminada`.
+- Selecciones presentes en partidos reales: `activa`.
+- Si football-data.org entrega standings con estatus explícito, se usa ese dato.
 
 ## Cómo conectar football-data.org
 
@@ -194,6 +215,31 @@ La app expone estas funciones en `window` para pruebas o futuras integraciones:
 - `detectarSeleccionEliminada(seleccion, partidos, standings)`
 - `generarNoticiasAutomaticas(partidos, participantes)`
 - `calcularRankingParticipantes()`
+
+## Gráficos interactivos
+
+Los gráficos filtran la tabla y los encuentros al hacer clic:
+
+- Puntos por participante: filtra por participante.
+- Estado de selecciones: filtra activas o eliminadas.
+- Goles a favor: filtra por selección.
+- Selecciones vivas: filtra por participante.
+
+Usa `Quitar filtro` para volver a ver todo.
+
+## Tabla de goleo
+
+La vista `Goleo` muestra:
+
+- Jugador.
+- Selección.
+- Dueño de la selección.
+- Goles.
+- Penales.
+- Partidos en los que anotó.
+- Fecha del último gol.
+
+Si football-data.org entrega desglose de goles, el sincronizador intenta guardarlo en `data/partidos.json` como `goleadores`.
 
 ## Limitaciones conocidas
 

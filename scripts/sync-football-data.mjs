@@ -5,6 +5,7 @@ const API_BASE = process.env.FOOTBALL_DATA_BASE_URL || "https://api.football-dat
 const COMPETITION = process.env.FOOTBALL_DATA_COMPETITION || "WC";
 const SEASON = process.env.FOOTBALL_DATA_SEASON || "2026";
 const OUTPUT_FILE = new URL("../data/partidos.json", import.meta.url);
+const SELECCIONES_FILE = new URL("../data/selecciones.json", import.meta.url);
 
 const STAGE_LABELS = {
   GROUP_STAGE: "Fase de grupos",
@@ -35,13 +36,16 @@ const TEAM_NAME_MAP = {
   Argentina: "Argentina",
   Australia: "Australia",
   Austria: "Austria",
-  "Bosnia and Herzegovina": "Bosnia",
+  Bosnia: "Bosnia-Herzegovina",
+  "Bosnia and Herzegovina": "Bosnia-Herzegovina",
   Brazil: "Brasil",
   Canada: "Canadá",
   "Cape Verde Islands": "Cabo Verde",
   "Cape Verde": "Cabo Verde",
   Colombia: "Colombia",
   Congo: "Congo",
+  "Congo DR": "Congo",
+  "DR Congo": "Congo",
   Croatia: "Croacia",
   Curaçao: "Curazao",
   Curacao: "Curazao",
@@ -83,17 +87,76 @@ const TEAM_NAME_MAP = {
   Uzbekistan: "Uzbekistán"
 };
 
+const TEAM_ISO_MAP = {
+  Alemania: "DE",
+  Arabia: "SA",
+  "Arabia Saudita": "SA",
+  Argelia: "DZ",
+  Argentina: "AR",
+  Australia: "AU",
+  Austria: "AT",
+  Belgica: "BE",
+  Bélgica: "BE",
+  Bosnia: "BA",
+  "Bosnia-Herzegovina": "BA",
+  Brasil: "BR",
+  "Cabo Verde": "CV",
+  Canada: "CA",
+  Canadá: "CA",
+  Chequia: "CZ",
+  Chile: "CL",
+  Colombia: "CO",
+  Congo: "CD",
+  "Corea del Sur": "KR",
+  Croacia: "HR",
+  Curazao: "CW",
+  Ecuador: "EC",
+  Egipto: "EG",
+  Escocia: "GB-SCT",
+  España: "ES",
+  Francia: "FR",
+  Ghana: "GH",
+  Inglaterra: "GB-ENG",
+  Iran: "IR",
+  Irán: "IR",
+  Italia: "IT",
+  Japon: "JP",
+  Japón: "JP",
+  Jordania: "JO",
+  Marruecos: "MA",
+  Mexico: "MX",
+  México: "MX",
+  Noruega: "NO",
+  "Nueva Zelanda": "NZ",
+  "Países Bajos": "NL",
+  Panamá: "PA",
+  Paraguay: "PY",
+  Portugal: "PT",
+  Qatar: "QA",
+  Senegal: "SN",
+  Sudafrica: "ZA",
+  Sudáfrica: "ZA",
+  Suecia: "SE",
+  Suiza: "CH",
+  Turquia: "TR",
+  Turquía: "TR",
+  Uruguay: "UY",
+  USA: "US",
+  Uzbekistan: "UZ",
+  Uzbekistán: "UZ"
+};
+
 if (!TOKEN) {
   console.error("Falta FOOTBALL_DATA_TOKEN. Configura la variable de entorno o el secret de GitHub Actions.");
   process.exit(1);
 }
 
+const authHeaders = {
+  "X-Auth-Token": TOKEN,
+  "X-Unfold-Goals": "true"
+};
 const url = `${API_BASE}/competitions/${COMPETITION}/matches?season=${SEASON}`;
-const response = await fetch(url, {
-  headers: {
-    "X-Auth-Token": TOKEN
-  }
-});
+const response = await fetch(url, { headers: authHeaders });
 
 if (!response.ok) {
   const body = await response.text();
@@ -126,12 +189,14 @@ const normalized = matches.map((match) => {
     estatus: STATUS_LABELS[match.status] || existing.estatus || "pendiente",
     estadio: existing.estadio || match.venue || "",
     ciudad: existing.ciudad || "",
-    pais: existing.pais || ""
+    pais: existing.pais || "",
+    goleadores: normalizeGoals(match.goals, existing.goleadores)
   };
 });
 
 normalized.sort((a, b) => new Date(a.fechaUTC) - new Date(b.fechaUTC));
 await writeFile(OUTPUT_FILE, `${JSON.stringify(normalized, null, 2)}\n`, "utf8");
+await updateTeamStatuses(normalized, await fetchStandings(authHeaders));
 
 console.log(`Sincronizados ${normalized.length} partidos desde football-data.org.`);
 
@@ -157,4 +222,124 @@ function groupLabel(group) {
 
 function scoreValue(value) {
   return Number.isFinite(value) ? value : null;
+}
+
+function normalizeGoals(goals, fallback = []) {
+  if (!Array.isArray(goals) || !goals.length) return Array.isArray(fallback) ? fallback : [];
+
+  return goals
+    .map((goal) => {
+      const jugador = goal.scorer?.name || goal.player?.name || goal.player || goal.scorer || "";
+      const seleccion = teamName(goal.team?.name || goal.team || goal.side || "");
+      if (!jugador || !seleccion) return null;
+
+      return {
+        jugador,
+        seleccion,
+        minuto: Number.isFinite(goal.minute) ? goal.minute : null,
+        tipo: goal.type === "PENALTY" || goal.penalty ? "penal" : goal.type === "OWN_GOAL" ? "autogol" : "regular"
+      };
+    })
+    .filter(Boolean);
+}
+
+async function fetchStandings(headers) {
+  const standingsUrl = `${API_BASE}/competitions/${COMPETITION}/standings?season=${SEASON}`;
+  try {
+    const standingsResponse = await fetch(standingsUrl, { headers });
+    if (!standingsResponse.ok) return [];
+    const payload = await standingsResponse.json();
+    return Array.isArray(payload.standings) ? payload.standings : [];
+  } catch {
+    return [];
+  }
+}
+
+async function updateTeamStatuses(partidos, standings) {
+  let selecciones;
+  try {
+    selecciones = JSON.parse(await readFile(SELECCIONES_FILE, "utf8"));
+  } catch {
+    return;
+  }
+
+  const statusByTeam = buildStatusMap(partidos, standings);
+  const existingNames = new Set(selecciones.map((seleccion) => seleccion.nombre));
+  const updated = selecciones.map((seleccion) => {
+    const nextStatus = statusByTeam.get(seleccion.nombre);
+    return nextStatus ? { ...seleccion, estatus: nextStatus } : seleccion;
+  });
+
+  statusByTeam.forEach((estatus, nombre) => {
+    if (existingNames.has(nombre)) return;
+    const codigoISO = TEAM_ISO_MAP[nombre] || "";
+    updated.push({
+      nombre,
+      codigoISO,
+      bandera: flagEmoji(codigoISO),
+      estatus
+    });
+  });
+
+  await writeFile(SELECCIONES_FILE, `${JSON.stringify(updated, null, 2)}\n`, "utf8");
+}
+
+function buildStatusMap(partidos, standings) {
+  const statusByTeam = new Map();
+  partidos.forEach((match) => {
+    [match.local, match.visitante].forEach((team) => {
+      if (!isPlaceholderTeam(team)) statusByTeam.set(team, "activa");
+    });
+  });
+
+  standings.forEach((standing) => {
+    (standing.table || []).forEach((row) => {
+      const name = teamName(row.team?.name);
+      if (!name || isPlaceholderTeam(name)) return;
+      if (row.status === "ELIMINATED" || row.status === "eliminated") statusByTeam.set(name, "eliminada");
+      if (row.status === "QUALIFIED" || row.status === "qualified") statusByTeam.set(name, "activa");
+    });
+  });
+
+  partidos.filter(isPlayed).forEach((match) => {
+    const winner = winnerOf(match);
+    const loser = loserOf(match);
+    if (match.fase === "Final" && winner && !isPlaceholderTeam(winner)) {
+      statusByTeam.set(winner, "campeona");
+    }
+    if (isKnockout(match.fase) && loser && !isPlaceholderTeam(loser)) {
+      statusByTeam.set(loser, "eliminada");
+    }
+  });
+
+  return statusByTeam;
+}
+
+function isPlayed(match) {
+  return match.golesLocal !== null && match.golesVisitante !== null;
+}
+
+function winnerOf(match) {
+  if (!isPlayed(match) || match.golesLocal === match.golesVisitante) return null;
+  return match.golesLocal > match.golesVisitante ? match.local : match.visitante;
+}
+
+function loserOf(match) {
+  if (!isPlayed(match) || match.golesLocal === match.golesVisitante) return null;
+  return match.golesLocal < match.golesVisitante ? match.local : match.visitante;
+}
+
+function isKnockout(fase) {
+  return ["Ronda de 32", "Octavos de final", "Cuartos de final", "Semifinales", "Tercer lugar", "Final"].includes(fase);
+}
+
+function isPlaceholderTeam(name) {
+  return /por definirse|ganador|perdedor|segundo/i.test(name || "");
+}
+
+function flagEmoji(code) {
+  if (code === "GB-ENG") return "\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}";
+  if (code === "GB-SCT") return "\u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}";
+  if (!/^[A-Z]{2}$/.test(code || "")) return "🏳️";
+  return [...code].map((letter) => String.fromCodePoint(127397 + letter.charCodeAt(0))).join("");
 }
